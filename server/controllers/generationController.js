@@ -209,13 +209,14 @@ export const generateKit = async (req, res) => {
           skills,
           colorPalette: Array.isArray(textAssets.colorPalette) ? textAssets.colorPalette : [],
         }
+        const selfieBuffer = selfie?.buffer || null
         const [linkedinBanner, twitterBanner, quoteGraphic, businessCard, profilePicture] =
           await Promise.all([
-            generateLinkedInBanner(userData),
-            generateTwitterBanner(userData),
-            generateQuoteGraphic(userData, quoteTagline),
-            generateBusinessCard(userData),
-            generateProfilePicture(userData),
+            generateLinkedInBanner(userData, selfieBuffer),
+            generateTwitterBanner(userData, selfieBuffer),
+            generateQuoteGraphic(userData, quoteTagline, selfieBuffer),
+            generateBusinessCard(userData, selfieBuffer),
+            generateProfilePicture(userData, selfieBuffer),
           ])
 
         const fallbackText = buildFallbackTextAssets({ name, title, industry, oneLiner })

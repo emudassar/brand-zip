@@ -1,4 +1,4 @@
-import { createCanvas } from 'canvas'
+import { createCanvas, loadImage } from 'canvas'
 
 const styleConfig = {
   founder: {
@@ -225,7 +225,25 @@ const renderSkillPills = (ctx, skills, x, y, accentColor, textColor) => {
   })
 }
 
-export const generateLinkedInBanner = async (userData) => {
+const drawCircularPhoto = async (ctx, imageBuffer, centerX, centerY, radius, accentColor) => {
+  const image = await loadImage(imageBuffer)
+  ctx.save()
+  ctx.beginPath()
+  ctx.arc(centerX, centerY, radius, 0, Math.PI * 2)
+  ctx.closePath()
+  ctx.clip()
+  const x = centerX - radius
+  const y = centerY - radius
+  ctx.drawImage(image, x, y, radius * 2, radius * 2)
+  ctx.restore()
+  ctx.beginPath()
+  ctx.arc(centerX, centerY, radius, 0, Math.PI * 2)
+  ctx.strokeStyle = accentColor
+  ctx.lineWidth = 4
+  ctx.stroke()
+}
+
+export const generateLinkedInBanner = async (userData, selfieBuffer) => {
   const width = 1584
   const height = 396
   const canvas = createCanvas(width, height)
@@ -258,26 +276,30 @@ export const generateLinkedInBanner = async (userData) => {
   ctx.font = `14px ${fontFamily}`
   renderSkillPills(ctx, userData.skills || [], 80, 250, style.accentColor, style.textColor)
 
-  const centerX = 1100
+  const centerX = 1300
   const centerY = 198
   ctx.beginPath()
-  ctx.arc(centerX, centerY, 120, 0, Math.PI * 2)
+  ctx.arc(centerX, centerY, 140, 0, Math.PI * 2)
   ctx.strokeStyle = withAlpha(style.accentColor, 0.3)
   ctx.lineWidth = 1
   ctx.stroke()
 
-  ctx.beginPath()
-  ctx.arc(centerX, centerY, 80, 0, Math.PI * 2)
-  ctx.fillStyle = withAlpha(style.accentColor2, 0.15)
-  ctx.fill()
+  if (selfieBuffer) {
+    await drawCircularPhoto(ctx, selfieBuffer, centerX, centerY, 130, style.accentColor)
+  } else {
+    ctx.beginPath()
+    ctx.arc(centerX, centerY, 80, 0, Math.PI * 2)
+    ctx.fillStyle = withAlpha(style.accentColor2, 0.15)
+    ctx.fill()
 
-  ctx.fillStyle = style.textColor
-  ctx.font = `700 80px ${fontFamily}`
-  ctx.textAlign = 'center'
-  ctx.textBaseline = 'middle'
-  ctx.fillText((userData.name || 'B').trim().charAt(0).toUpperCase(), centerX, centerY + 6)
-  ctx.textAlign = 'left'
-  ctx.textBaseline = 'alphabetic'
+    ctx.fillStyle = style.textColor
+    ctx.font = `700 80px ${fontFamily}`
+    ctx.textAlign = 'center'
+    ctx.textBaseline = 'middle'
+    ctx.fillText((userData.name || 'B').trim().charAt(0).toUpperCase(), centerX, centerY + 6)
+    ctx.textAlign = 'left'
+    ctx.textBaseline = 'alphabetic'
+  }
 
   ctx.fillStyle = withAlpha(style.textColor, 0.3)
   ctx.font = `11px ${fontFamily}`
@@ -286,7 +308,7 @@ export const generateLinkedInBanner = async (userData) => {
   return canvas.toBuffer('image/png').toString('base64')
 }
 
-export const generateTwitterBanner = async (userData) => {
+export const generateTwitterBanner = async (userData, selfieBuffer) => {
   const width = 1500
   const height = 500
   const canvas = createCanvas(width, height)
@@ -299,21 +321,31 @@ export const generateTwitterBanner = async (userData) => {
   drawNoise(ctx, width, height, 0.03)
 
   const name = userData.name || ''
-  ctx.textAlign = 'center'
+  const hasSelfie = Boolean(selfieBuffer)
+  const nameX = hasSelfie ? 380 : width / 2
+  const maxNameWidth = hasSelfie ? 1020 : 1300
+  ctx.textAlign = hasSelfie ? 'left' : 'center'
   ctx.fillStyle = style.textColor
   ctx.font = `700 72px ${fontFamily}`
-  ctx.fillText(truncateOneLine(ctx, name, 1300), width / 2, 180)
+  const displayName = truncateOneLine(ctx, name, maxNameWidth)
+  ctx.fillText(displayName, nameX, 180)
 
-  const lineWidth = Math.max(140, Math.min(520, ctx.measureText(name).width * 0.9))
-  const accentLine = ctx.createLinearGradient(width / 2 - lineWidth / 2, 0, width / 2 + lineWidth / 2, 0)
+  const lineWidth = Math.max(140, Math.min(520, ctx.measureText(displayName).width * 0.9))
+  const lineStartX = hasSelfie ? nameX : width / 2 - lineWidth / 2
+  const lineEndX = hasSelfie ? nameX + lineWidth : width / 2 + lineWidth / 2
+  const accentLine = ctx.createLinearGradient(lineStartX, 0, lineEndX, 0)
   accentLine.addColorStop(0, style.accentColor)
   accentLine.addColorStop(1, style.accentColor2)
   ctx.fillStyle = accentLine
-  drawRoundedRect(ctx, width / 2 - lineWidth / 2, 206, lineWidth, 4, 2, accentLine)
+  drawRoundedRect(ctx, hasSelfie ? nameX : width / 2 - lineWidth / 2, 206, lineWidth, 4, 2, accentLine)
 
   ctx.font = `26px ${fontFamily}`
   ctx.fillStyle = style.subtextColor
-  ctx.fillText(userData.title || '', width / 2, 260)
+  ctx.fillText(userData.title || '', nameX, 260)
+
+  if (hasSelfie) {
+    await drawCircularPhoto(ctx, selfieBuffer, 200, 250, 110, style.accentColor)
+  }
 
   drawRoundedRect(ctx, 0, height - 60, width, 60, 0, style.accentColor)
   ctx.textAlign = 'left'
@@ -334,7 +366,7 @@ export const generateTwitterBanner = async (userData) => {
   return canvas.toBuffer('image/png').toString('base64')
 }
 
-export const generateQuoteGraphic = async (userData, tagline) => {
+export const generateQuoteGraphic = async (userData, tagline, selfieBuffer) => {
   const width = 1080
   const height = 1080
   const canvas = createCanvas(width, height)
@@ -363,13 +395,26 @@ export const generateQuoteGraphic = async (userData, tagline) => {
 
   drawRoundedRect(ctx, width / 2 - 30, 540, 60, 2, 1, style.accentColor)
 
-  ctx.fillStyle = style.subtextColor
-  ctx.font = `24px ${fontFamily}`
-  ctx.fillText(userData.name || '', width / 2, 580)
+  if (selfieBuffer) {
+    await drawCircularPhoto(ctx, selfieBuffer, 440, 610, 35, style.accentColor)
+    ctx.textAlign = 'left'
+    ctx.fillStyle = style.subtextColor
+    ctx.font = `24px ${fontFamily}`
+    ctx.fillText(userData.name || '', 490, 605)
 
-  ctx.fillStyle = withAlpha(style.subtextColor, 0.7)
-  ctx.font = `18px ${fontFamily}`
-  ctx.fillText(userData.title || '', width / 2, 615)
+    ctx.fillStyle = withAlpha(style.subtextColor, 0.7)
+    ctx.font = `18px ${fontFamily}`
+    ctx.fillText(userData.title || '', 490, 628)
+    ctx.textAlign = 'center'
+  } else {
+    ctx.fillStyle = style.subtextColor
+    ctx.font = `24px ${fontFamily}`
+    ctx.fillText(userData.name || '', width / 2, 580)
+
+    ctx.fillStyle = withAlpha(style.subtextColor, 0.7)
+    ctx.font = `18px ${fontFamily}`
+    ctx.fillText(userData.title || '', width / 2, 615)
+  }
 
   ctx.fillStyle = withAlpha(style.textColor, 0.35)
   ctx.font = `13px ${fontFamily}`
@@ -378,7 +423,7 @@ export const generateQuoteGraphic = async (userData, tagline) => {
   return canvas.toBuffer('image/png').toString('base64')
 }
 
-export const generateBusinessCard = async (userData) => {
+export const generateBusinessCard = async (userData, selfieBuffer) => {
   const width = 1050
   const height = 600
   const canvas = createCanvas(width, height)
@@ -387,17 +432,24 @@ export const generateBusinessCard = async (userData) => {
   const fontFamily = getFontFamily(style)
 
   drawRoundedRect(ctx, 0, 0, 525, height, 0, style.accentColor)
-  ctx.fillStyle = 'rgba(255,255,255,0.15)'
   ctx.textAlign = 'center'
   ctx.textBaseline = 'middle'
-  ctx.font = `700 160px ${fontFamily}`
-  ctx.fillText((userData.name || 'B').charAt(0).toUpperCase(), 262, 220)
-  ctx.fillStyle = '#FFFFFF'
-  ctx.font = `700 28px ${fontFamily}`
-  ctx.fillText(userData.name || '', 262, 330)
-  ctx.fillStyle = 'rgba(255,255,255,0.8)'
-  ctx.font = `16px ${fontFamily}`
-  ctx.fillText(userData.title || '', 262, 362)
+  if (selfieBuffer) {
+    await drawCircularPhoto(ctx, selfieBuffer, 262, 280, 120, '#FFFFFF')
+    ctx.fillStyle = '#FFFFFF'
+    ctx.font = `700 20px ${fontFamily}`
+    ctx.fillText(userData.name || '', 262, 450)
+  } else {
+    ctx.fillStyle = 'rgba(255,255,255,0.15)'
+    ctx.font = `700 160px ${fontFamily}`
+    ctx.fillText((userData.name || 'B').charAt(0).toUpperCase(), 262, 220)
+    ctx.fillStyle = '#FFFFFF'
+    ctx.font = `700 28px ${fontFamily}`
+    ctx.fillText(userData.name || '', 262, 330)
+    ctx.fillStyle = 'rgba(255,255,255,0.8)'
+    ctx.font = `16px ${fontFamily}`
+    ctx.fillText(userData.title || '', 262, 362)
+  }
 
   const rightGradient = ctx.createLinearGradient(525, 0, width, height)
   rightGradient.addColorStop(0, style.gradientColors[1] || style.gradientColors[0])
@@ -438,7 +490,7 @@ const makeMonogram = (name) => {
   return `${parts[0].charAt(0)}${parts[parts.length - 1].charAt(0)}`.toUpperCase()
 }
 
-export const generateProfilePicture = async (userData) => {
+export const generateProfilePicture = async (userData, selfieBuffer) => {
   const width = 600
   const height = 600
   const canvas = createCanvas(width, height)
@@ -450,34 +502,39 @@ export const generateProfilePicture = async (userData) => {
   drawDecorations(ctx, width, height, style.decorStyle, style.accentColor)
   drawNoise(ctx, width, height, 0.04)
 
-  ctx.beginPath()
-  ctx.arc(300, 300, 200, 0, Math.PI * 2)
-  ctx.fillStyle = withAlpha(style.accentColor, 0.2)
-  ctx.fill()
-  ctx.strokeStyle = style.accentColor
-  ctx.lineWidth = 3
-  ctx.stroke()
-
-  const innerGradient = ctx.createLinearGradient(130, 130, 470, 470)
-  innerGradient.addColorStop(0, withAlpha(style.accentColor, 0.4))
-  innerGradient.addColorStop(1, withAlpha(style.accentColor2, 0.4))
-  ctx.beginPath()
-  ctx.arc(300, 300, 170, 0, Math.PI * 2)
-  ctx.fillStyle = innerGradient
-  ctx.fill()
-
   ctx.textAlign = 'center'
   ctx.textBaseline = 'middle'
-  ctx.fillStyle = style.textColor
-  ctx.font = `700 120px ${fontFamily}`
-  ctx.fillText(makeMonogram(userData.name), 300, 305)
+  if (selfieBuffer) {
+    await drawCircularPhoto(ctx, selfieBuffer, 300, 260, 180, style.accentColor)
+  } else {
+    ctx.beginPath()
+    ctx.arc(300, 300, 200, 0, Math.PI * 2)
+    ctx.fillStyle = withAlpha(style.accentColor, 0.2)
+    ctx.fill()
+    ctx.strokeStyle = style.accentColor
+    ctx.lineWidth = 3
+    ctx.stroke()
+
+    const innerGradient = ctx.createLinearGradient(130, 130, 470, 470)
+    innerGradient.addColorStop(0, withAlpha(style.accentColor, 0.4))
+    innerGradient.addColorStop(1, withAlpha(style.accentColor2, 0.4))
+    ctx.beginPath()
+    ctx.arc(300, 300, 170, 0, Math.PI * 2)
+    ctx.fillStyle = innerGradient
+    ctx.fill()
+
+    ctx.fillStyle = style.textColor
+    ctx.font = `700 120px ${fontFamily}`
+    ctx.fillText(makeMonogram(userData.name), 300, 305)
+  }
 
   ctx.textBaseline = 'alphabetic'
   ctx.font = `700 28px ${fontFamily}`
-  ctx.fillText(userData.name || '', 300, 530)
+  ctx.fillStyle = style.textColor
+  ctx.fillText(userData.name || '', 300, selfieBuffer ? 470 : 530)
   ctx.fillStyle = style.subtextColor
   ctx.font = `16px ${fontFamily}`
-  ctx.fillText(userData.title || '', 300, 560)
+  ctx.fillText(userData.title || '', 300, selfieBuffer ? 500 : 560)
 
   return canvas.toBuffer('image/png').toString('base64')
 }
