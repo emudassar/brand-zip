@@ -149,7 +149,6 @@ export const generateKit = async (req, res) => {
 
     const { name, email, title, industry, oneLiner, stylePreset } = req.body
     const skills = normalizeSkills(req.body.skills)
-    const selfie = req.file
 
     if (!name || !email || !title || !stylePreset) {
       return res.status(400).json({
@@ -190,28 +189,33 @@ export const generateKit = async (req, res) => {
             skills,
             oneLiner,
             stylePreset,
-            selfie,
+            selfie: req.file,
           })
         } catch (textError) {
           textAssets = buildFallbackTextAssets({ name, title, industry, oneLiner })
         }
 
+        const fallbackText = buildFallbackTextAssets({ name, title, industry, oneLiner })
         const quoteTagline =
           Array.isArray(textAssets.taglines) && textAssets.taglines.length > 0
             ? textAssets.taglines[0]
             : `${name} - ${title}`
+        const taglines =
+          Array.isArray(textAssets.taglines) && textAssets.taglines.length > 0
+            ? textAssets.taglines
+            : fallbackText.taglines
 
         const userData = {
           name,
           title,
           email,
           industry: industry || '',
+          oneLiner: oneLiner || '',
           stylePreset,
           skills,
-          colorPalette: Array.isArray(textAssets.colorPalette) ? textAssets.colorPalette : [],
-          geminiTagline: quoteTagline,
+          taglines,
         }
-        const selfieBuffer = selfie?.buffer || null
+        const selfieBuffer = req.file?.buffer ?? null
         const [linkedinBanner, twitterBanner, quoteGraphic, businessCard, profilePicture] =
           await Promise.all([
             generateLinkedInBanner(userData, selfieBuffer),
@@ -221,8 +225,7 @@ export const generateKit = async (req, res) => {
             generateProfilePicture(userData, selfieBuffer),
           ])
 
-        const fallbackText = buildFallbackTextAssets({ name, title, industry, oneLiner })
-        const originalSelfie = selfie?.buffer ? Buffer.from(selfie.buffer).toString('base64') : ''
+        const originalSelfie = req.file?.buffer ? Buffer.from(req.file.buffer).toString('base64') : ''
 
         order.generatedAssets = {
           originalSelfie,
