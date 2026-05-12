@@ -205,9 +205,11 @@ export const generateKit = async (req, res) => {
           name,
           title,
           email,
+          industry: industry || '',
           stylePreset,
           skills,
           colorPalette: Array.isArray(textAssets.colorPalette) ? textAssets.colorPalette : [],
+          geminiTagline: quoteTagline,
         }
         const selfieBuffer = selfie?.buffer || null
         const [linkedinBanner, twitterBanner, quoteGraphic, businessCard, profilePicture] =
