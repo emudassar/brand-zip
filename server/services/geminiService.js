@@ -1,7 +1,13 @@
 import { GoogleGenerativeAI } from '@google/generative-ai'
 
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY)
-const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' })
+function getTextModel() {
+  const key = process.env.GEMINI_API_KEY
+  if (!key) {
+    throw new Error('GEMINI_API_KEY is not set')
+  }
+  const genAI = new GoogleGenerativeAI(key)
+  return genAI.getGenerativeModel({ model: 'gemini-1.5-flash' })
+}
 
 const SYSTEM_PROMPT =
   'You are a professional personal branding expert. Return ONLY valid JSON. No markdown. No explanation. No code blocks. Raw JSON only.'
@@ -47,7 +53,7 @@ Return this exact JSON structure, nothing else:
   colorPalette: array of exactly 5 objects each with name string and hex string
 }`
 
-  const result = await model.generateContent({
+  const result = await getTextModel().generateContent({
     contents: [{ role: 'user', parts: [{ text: `${SYSTEM_PROMPT}\n\n${userPrompt}` }] }],
   })
 
