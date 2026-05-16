@@ -34,27 +34,43 @@ export const generateTextAssets = async (userData) => {
   const { name, title, industry, skills, oneLiner, stylePreset } = userData
   const skillList = Array.isArray(skills) ? skills.join(', ') : String(skills || '')
 
-  const userPrompt = `Create a complete personal brand identity text kit for this person:
+  const skillsList = Array.isArray(skills) ? skills : skillList.split(',').map((s) => s.trim()).filter(Boolean)
+
+  const prompt = `You are an expert personal branding 
+copywriter. Generate complete brand copy for this person.
+
+Person details:
 Name: ${name}
 Title: ${title}
 Industry: ${industry}
-Skills: ${skillList}
-About them: ${oneLiner}
-Brand style: ${stylePreset} (founder=bold/energetic, developer=technical/sharp, creator=warm/expressive, corporate=formal/trustworthy, minimalist=clean/refined)
+Skills: ${skillsList.join(', ')}
+About: ${oneLiner}
+Brand style: ${stylePreset}
 
-Return this exact JSON structure, nothing else:
-{
-  linkedinBioShort: string under 120 characters,
-  linkedinBioMedium: string under 300 characters,
-  linkedinBioLong: string under 500 characters,
-  twitterBio: string under 160 characters,
-  taglines: array of exactly 3 strings each under 60 characters,
-  elevatorPitch: string of exactly 2 sentences,
-  colorPalette: array of exactly 5 objects each with name string and hex string
-}`
+STRICT REQUIREMENTS — follow exactly:
+- linkedinBioShort: exactly 120 characters, punchy, 
+  first person, ends with impact not ellipsis
+- linkedinBioMedium: exactly 280-320 characters, 
+  tells their story, mentions 2 skills, has a CTA
+- linkedinBioLong: exactly 480-520 characters, 
+  full narrative, background, skills, mission, CTA
+- twitterBio: exactly 140-155 characters, 
+  punchy, uses | or · as separators between facts
+- taglines: array of exactly 3 strings, each 
+  between 40-65 characters, completely different 
+  from each other, no generic phrases like 
+  "passionate about" or "dedicated to"
+- elevatorPitch: exactly 2 sentences, first sentence 
+  is what they do and for whom, second is the result 
+  they deliver
+- colorPalette: 5 objects with name and hex, 
+  colors must match the ${stylePreset} personality
+
+Return ONLY raw JSON. No markdown. No explanation. 
+No backticks. Start your response with { and end with }.`
 
   const result = await getTextModel().generateContent({
-    contents: [{ role: 'user', parts: [{ text: `${SYSTEM_PROMPT}\n\n${userPrompt}` }] }],
+    contents: [{ role: 'user', parts: [{ text: prompt }] }],
   })
 
   const rawText = result.response.text() || ''
