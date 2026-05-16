@@ -8,7 +8,7 @@ import {
   generateProfilePicture,
   generateQuoteGraphic,
   generateTwitterBanner,
-} from '../services/geminiImageService.js'
+} from '../services/canvasService.js'
 
 const normalizeSkills = (skills) => {
   if (Array.isArray(skills)) {
